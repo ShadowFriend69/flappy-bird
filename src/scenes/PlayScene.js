@@ -13,6 +13,7 @@ class PlayScene extends BaseScene {
 
         this.bird = null;
         this.pipes = null;
+        this.isPaused = false;
 
         this.pipeHorizontalDistance = 0;
         this.pipeVerticalDistanceRange = [150, 250];
@@ -32,11 +33,39 @@ class PlayScene extends BaseScene {
         this.createScore();
         this.createPauseBtn();
         this.handleInputs();
+        this.listenToEvents();
     }
 
     update() {
         this.checkGameStatus();
         this.recyclePipes();
+    }
+
+    listenToEvents() {
+        if (this.pauseEvent) { return; }
+
+        this.pauseEvent = this.events.on('resume', () => {
+            this.initialTime = 3;
+            this.countDownText = this.add.text(...this.screenCenter, 'Fly in: ' + this.initialTime, this.fontOptions)
+                .setOrigin(0.5);
+            this.timedEvent = this.time.addEvent({
+                delay: 1000,
+                callback: this.countDown,
+                callbackScope: this,
+                loop: true
+            })
+        });
+    }
+
+    countDown() {
+        this.initialTime--;
+        this.countDownText.setText('Fly in: ' + this.initialTime);
+        if (this.initialTime <= 0) {
+            this.isPaused = false;
+            this.countDownText.setText('');
+            this.physics.resume();
+            this.timedEvent.remove();
+        }
     }
 
     createBG() {
@@ -80,12 +109,14 @@ class PlayScene extends BaseScene {
     }
 
     createPauseBtn() {
+        this.isPaused = false;
         const pauseButton = this.add.image(this.config.width - 10, this.config.height - 10, 'pause')
             .setInteractive()
             .setScale(2)
             .setOrigin(1);
 
         pauseButton.on('pointerdown', () => {
+            this.isPaused = true;
             this.physics.pause();
             this.scene.pause();
             this.scene.launch('PauseScene');
@@ -166,6 +197,7 @@ class PlayScene extends BaseScene {
     }
 
     flap() {
+        if (this.isPaused) { return; }
         this.bird.body.velocity.y = -this.flapVelocity;
     }
 
